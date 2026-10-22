@@ -11,7 +11,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "17"
@@ -41,8 +41,16 @@ jobs:
           }
           publicar Errores errores.txt
           publicar Contexto contexto.txt
+      - name: Buscar el APK generado
+        if: always()
+        run: |
+          mkdir -p salida
+          find bin .buildozer -name "*.apk" -newer buildozer.spec -exec cp {} salida/ \; 2>/dev/null || true
+          ls -la salida
+          if ls salida/*.apk >/dev/null 2>&1; then echo "::notice title=APK::$(ls salida)"; fi
       - uses: actions/upload-artifact@v4
-        if: success()
+        if: always()
         with:
           name: determinantes-apk
-          path: bin/*.apk
+          path: salida/*.apk
+          if-no-files-found: warn
