@@ -324,3 +324,30 @@ def resolver(M, metodo):
         salida += pasos + ["", "=" * 30, ""]
     salida += ["RESUMEN"] + resumen
     return "\n".join(salida)
+
+
+# ------------------------------------------------------------- texto -> matriz
+def matriz_desde_texto(texto):
+    """
+    Convierte texto pegado (por ejemplo, copiado de una foto con Google Lens)
+    en una matriz. Una fila por línea; valores separados por espacios, tab,
+    ';' o '|'. Si una fila no tiene esos separadores, se separa por comas.
+    """
+    import re
+    filas = []
+    for linea in texto.strip().splitlines():
+        linea = linea.strip().strip("[]()|").strip()
+        if not linea:
+            continue
+        partes = [p for p in re.split(r"[\s;|]+", linea) if p]
+        if len(partes) == 1 and "," in partes[0]:
+            partes = [p for p in partes[0].split(",") if p]
+        filas.append([parse_valor(p.replace("−", "-")) for p in partes])
+    if not filas:
+        raise ValueError("No se encontraron números.")
+    n = len(filas[0])
+    for i, f in enumerate(filas):
+        if len(f) != n:
+            raise ValueError(f"La fila {i + 1} tiene {len(f)} valores; "
+                             f"la fila 1 tiene {n}.")
+    return filas

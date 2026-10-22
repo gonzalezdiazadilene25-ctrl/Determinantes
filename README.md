@@ -13,6 +13,10 @@ Muestra el procedimiento paso a paso y usa fracciones exactas.
 2. Llena las casillas (admite `5`, `-2.5`, `1/3`).
 3. Elige el método y pulsa **Calcular**.
 
+**Pegar matriz:** toma una foto de la matriz con **Google Lens**, toca *Texto* > *Copiar*,
+luego en la app pulsa **Pegar matriz** y pégala (una fila por línea, valores separados por espacios).
+La app crea la matriz con el tamaño correcto automáticamente.
+
 * El determinante solo existe si m = n.
 * La **inversa** solo existe si m = n y det(A) ≠ 0.
 * Para **Cramer**, ingresa la matriz aumentada [A | b] de m x (m+1).
