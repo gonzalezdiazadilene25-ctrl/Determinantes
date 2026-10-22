@@ -23,11 +23,20 @@ jobs:
       - name: Mostrar error de compilacion
         if: failure()
         run: |
-          # Publica las ultimas lineas del log como anotacion (visible en la pagina del run)
-          grep -n -i -E "error|exception|failed|traceback" build.log | grep -v -i warning | tail -40 > errores.txt || true
-          tail -60 build.log > final.txt
-          echo "::error title=Errores::$(sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g' errores.txt)"
-          echo "::error title=Final del log::$(sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g' final.txt)"
+          # Publica las partes utiles del log como anotaciones (visibles en la pagina del run)
+          sed 's/\x1b\[[0-9;]*m//g' build.log > limpio.log
+          awk '/STDOUT \(last|STDERR:|Command failed/{f=1} /ENVIRONMENT:/{f=0} f' limpio.log | tail -80 > contexto.txt
+          grep -E "error:|Error:|ERROR|Traceback|No such file|not found|fatal" limpio.log \
+            | grep -v -E "noexcept|error code|performance hint|warning" | tail -40 > errores.txt || true
+          publicar() {
+            split -l 20 "$2" trozo_
+            for t in trozo_*; do
+              echo "::error title=$1::$(sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g' "$t")"
+            done
+            rm -f trozo_*
+          }
+          publicar Errores errores.txt
+          publicar Contexto contexto.txt
       - uses: actions/upload-artifact@v4
         if: success()
         with:
