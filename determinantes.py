@@ -6,7 +6,8 @@ Métodos:
   - Cofactores (expansión de Laplace)
   - Eliminación Gaussiana
   - Gauss-Jordan
-  - Regla de Cramer (para sistemas A·x = b)
+  - Matriz inversa (Gauss-Jordan y adjunta)
+  - Sistemas A·x = b: Cramer, Gauss, Gauss-Jordan y matriz inversa
 """
 from fractions import Fraction
 
@@ -36,11 +37,17 @@ def fmt_corto(x):
     return str(x.numerator) if x.denominator == 1 else f"{x.numerator}/{x.denominator}"
 
 
-def matriz_texto(M):
+def matriz_texto(M, barra=None):
+    """Matriz alineada; con barra=k se dibuja '|' antes de la columna k."""
     celdas = [[fmt_corto(v) for v in fila] for fila in M]
     ancho = max(len(c) for fila in celdas for c in fila)
-    return "\n".join("[ " + "  ".join(c.rjust(ancho) for c in fila) + " ]"
-                     for fila in celdas)
+
+    def linea(fila):
+        c = [x.rjust(ancho) for x in fila]
+        if barra is None:
+            return "  ".join(c)
+        return "  ".join(c[:barra]) + "  |  " + "  ".join(c[barra:])
+    return "\n".join("[ " + linea(fila) + " ]" for fila in celdas)
 
 
 def copiar(M):
@@ -172,46 +179,6 @@ def det_gauss_jordan(M):
     return factor, pasos
 
 
-# ------------------------------------------------------------- Cramer
-def cramer(M):
-    """
-    M es la matriz aumentada [A | b] de tamaño n x (n+1).
-    Resuelve A·x = b con x_i = det(A_i) / det(A).
-    """
-    m = len(M)
-    n = len(M[0]) if m else 0
-    if n != m + 1:
-        raise ValueError(
-            f"Cramer necesita la matriz aumentada [A | b] de tamaño "
-            f"m x (m+1). Ingresaste {m}x{n}; usa {m}x{m + 1}.")
-    A = [list(map(Fraction, fila[:-1])) for fila in M]
-    b = [Fraction(fila[-1]) for fila in M]
-    pasos = ["REGLA DE CRAMER", "Matriz de coeficientes A:", matriz_texto(A),
-             "Vector b: [" + ", ".join(fmt_corto(v) for v in b) + "]", ""]
-    d = _det_cof(A) if m <= 4 else det_gauss(A)[0]
-    pasos.append(f"det(A) = {fmt(d)}")
-    if d == 0:
-        pasos.append("det(A) = 0 -> el sistema no tiene solución única; "
-                     "Cramer no se puede aplicar.")
-        return d, None, pasos
-    sol = []
-    for i in range(m):
-        Ai = [fila[:i] + [b[r]] + fila[i + 1:] for r, fila in enumerate(A)]
-        di = _det_cof(Ai) if m <= 4 else det_gauss(Ai)[0]
-        xi = di / d
-        sol.append(xi)
-        pasos.append("")
-        pasos.append(f"A{i + 1} (columna {i + 1} reemplazada por b):")
-        pasos.append(matriz_texto(Ai))
-        pasos.append(f"det(A{i + 1}) = {fmt_corto(di)}")
-        pasos.append(f"x{i + 1} = {fmt_corto(di)} / {fmt_corto(d)} = {fmt(xi)}")
-    pasos.append("")
-    pasos.append("SOLUCIÓN:")
-    for i, v in enumerate(sol):
-        pasos.append(f"  x{i + 1} = {fmt(v)}")
-    return d, sol, pasos
-
-
 # ------------------------------------------------------------- inversa
 def inversa_gauss_jordan(M):
     """Reduce [A | I] hasta [I | A^-1]."""
@@ -279,51 +246,279 @@ def _verificar(M, inv):
     return "Verificación: A · A^-1 = I  (correcto)" if ok else "Verificación fallida"
 
 
-METODOS = ["Cofactores", "Gauss", "Gauss-Jordan", "Cramer",
-           "Inversa (Gauss-Jordan)", "Inversa (Adjunta)", "Todos"]
+# ------------------------------------------------------------- sistemas A·x = b
+def validar_sistema(M):
+    """M es la matriz aumentada [A | b]. Devuelve (ecuaciones, incógnitas)."""
+    m = len(M)
+    n = len(M[0]) if m else 0
+    if n < 2:
+        raise ValueError("Para un sistema ingresa la matriz aumentada [A | b]: "
+                         "los coeficientes y, en la última columna, los "
+                         "términos independientes (n >= 2).")
+    return m, n - 1
+
+
+def _plural(k, singular, plural):
+    return f"{k} {singular if k == 1 else plural}"
+
+
+def _termino(coef, nombre, primero):
+    """Da '3x2', ' - x1', ' + 1/2t1', según el signo y la posición."""
+    v = abs(coef)
+    t = ("" if v == 1 else fmt_corto(v)) + nombre
+    if primero:
+        return ("-" if coef < 0 else "") + t
+    return f" {'-' if coef < 0 else '+'} {t}"
+
+
+def ecuaciones_texto(M):
+    k = len(M[0]) - 1
+    lineas = []
+    for fila in M:
+        izq = ""
+        for j in range(k):
+            if fila[j] != 0:
+                izq += _termino(fila[j], f"x{j + 1}", izq == "")
+        lineas.append(f"  {izq or '0'} = {fmt_corto(fila[k])}")
+    return "\n".join(lineas)
+
+
+def _encabezado(titulo, M):
+    m, k = len(M), len(M[0]) - 1
+    return [titulo,
+            f"Sistema de {_plural(m, 'ecuación', 'ecuaciones')} con "
+            f"{_plural(k, 'incógnita', 'incógnitas')}:",
+            ecuaciones_texto(M), "", "Matriz aumentada [A | b]:",
+            matriz_texto(M, k), ""]
+
+
+def _eliminar(A, k, reducida, pasos):
+    """Escalona A (aumentada) usando solo las k columnas de coeficientes.
+    Con reducida=True llega a la forma escalonada reducida (Gauss-Jordan)."""
+    m = len(A)
+    fila = 0
+    pivotes = []
+    for col in range(k):
+        if fila >= m:
+            break
+        piv = next((i for i in range(fila, m) if A[i][col] != 0), None)
+        if piv is None:
+            continue
+        antes = len(pasos)
+        if piv != fila:
+            A[fila], A[piv] = A[piv], A[fila]
+            pasos.append(f"F{fila + 1} <-> F{piv + 1}")
+        if reducida and A[fila][col] != 1:
+            p = A[fila][col]
+            A[fila] = [v / p for v in A[fila]]
+            pasos.append(f"F{fila + 1} -> F{fila + 1} / ({fmt_corto(p)})")
+        for i in (range(m) if reducida else range(fila + 1, m)):
+            if i != fila and A[i][col] != 0:
+                f = A[i][col] / A[fila][col]
+                A[i] = [a - f * b for a, b in zip(A[i], A[fila])]
+                pasos.append(f"F{i + 1} -> F{i + 1} - ({fmt_corto(f)})·F{fila + 1}")
+        if len(pasos) > antes:
+            pasos += [matriz_texto(A, k), ""]
+        pivotes.append(col)
+        fila += 1
+    return pivotes
+
+
+def _clasificar(A, k, pivotes, pasos):
+    r = len(pivotes)
+    for i in range(r, len(A)):
+        if A[i][k] != 0:
+            pasos.append(f"La fila {i + 1} dice 0 = {fmt_corto(A[i][k])}, "
+                         "lo cual es imposible.")
+            pasos += ["", "RESULTADO: el sistema NO tiene solución (incompatible)."]
+            return "ninguna"
+    pasos.append(f"Rango de A = rango de [A | b] = {r};  incógnitas = {k}.")
+    return "unica" if r == k else "infinitas"
+
+
+def _parametrica(R, k, pivotes):
+    """Solución general a partir de la forma escalonada reducida R."""
+    libres = [j for j in range(k) if j not in pivotes]
+    nombres = {j: f"t{i + 1}" for i, j in enumerate(libres)}
+    expr = {j: nombres[j] for j in libres}
+    for r, c in enumerate(pivotes):
+        txt = fmt_corto(R[r][k]) if R[r][k] != 0 else ""
+        for j in libres:
+            if R[r][j] != 0:
+                txt += _termino(-R[r][j], nombres[j], txt == "")
+        expr[c] = txt or "0"
+    lineas = ["Variables libres: " + ", ".join(f"x{j + 1} = {nombres[j]}" for j in libres)
+              + "  (cualquier número real)"]
+    lineas += [f"  x{j + 1} = {expr[j]}" for j in range(k)]
+    return lineas
+
+
+def _solucion(x):
+    return ["", "SOLUCIÓN:"] + [f"  x{i + 1} = {fmt(v)}" for i, v in enumerate(x)]
+
+
+def sistema_gauss(M):
+    m, k = validar_sistema(M)
+    A = copiar(M)
+    pasos = _encabezado("SISTEMA POR ELIMINACIÓN GAUSSIANA", A)
+    piv = _eliminar(A, k, False, pasos)
+    pasos.append("Matriz escalonada obtenida.")
+    tipo = _clasificar(A, k, piv, pasos)
+    if tipo == "ninguna":
+        return tipo, None, pasos
+    if tipo == "infinitas":
+        R = [fila[:] for fila in A]
+        _eliminar(R, k, True, [])
+        sol = _parametrica(R, k, piv)
+        pasos += ["", "RESULTADO: el sistema tiene INFINITAS soluciones."] + sol
+        return tipo, sol, pasos
+    pasos += ["", "Sustitución hacia atrás:"]
+    x = [Fraction(0)] * k
+    for i in range(k - 1, -1, -1):
+        suma = sum((A[i][j] * x[j] for j in range(i + 1, k)), Fraction(0))
+        x[i] = (A[i][k] - suma) / A[i][i]
+        if i == k - 1:
+            pasos.append(f"  x{i + 1} = {fmt_corto(A[i][k])} / ({fmt_corto(A[i][i])})"
+                         f" = {fmt_corto(x[i])}")
+        else:
+            pasos.append(f"  x{i + 1} = ({fmt_corto(A[i][k])} - ({fmt_corto(suma)})) / "
+                         f"({fmt_corto(A[i][i])}) = {fmt_corto(x[i])}")
+    return "unica", x, pasos + _solucion(x)
+
+
+def sistema_gauss_jordan(M):
+    m, k = validar_sistema(M)
+    A = copiar(M)
+    pasos = _encabezado("SISTEMA POR GAUSS-JORDAN", A)
+    piv = _eliminar(A, k, True, pasos)
+    pasos.append("Matriz escalonada reducida obtenida.")
+    tipo = _clasificar(A, k, piv, pasos)
+    if tipo == "ninguna":
+        return tipo, None, pasos
+    if tipo == "infinitas":
+        sol = _parametrica(A, k, piv)
+        pasos += ["", "RESULTADO: el sistema tiene INFINITAS soluciones."] + sol
+        return tipo, sol, pasos
+    x = [A[i][k] for i in range(k)]
+    pasos.append("La solución se lee en la última columna.")
+    return "unica", x, pasos + _solucion(x)
+
+
+def _no_aplica(pasos, motivo):
+    pasos += [motivo, "Usa Gauss o Gauss-Jordan: indican si hay una solución, "
+                      "infinitas o ninguna."]
+    return "no_aplica", None, pasos
+
+
+def cramer(M):
+    """Resuelve A·x = b con x_i = det(A_i) / det(A). Requiere A cuadrada."""
+    m, k = validar_sistema(M)
+    pasos = _encabezado("SISTEMA POR REGLA DE CRAMER", copiar(M))
+    if m != k:
+        return _no_aplica(pasos, f"Cramer necesita tantas ecuaciones como incógnitas "
+                                 f"(aquí hay {m} y {k}).")
+    A = [list(map(Fraction, fila[:-1])) for fila in M]
+    b = [Fraction(fila[-1]) for fila in M]
+    d = _det_cof(A) if m <= 4 else det_gauss(A)[0]
+    pasos.append(f"det(A) = {fmt(d)}")
+    if d == 0:
+        return _no_aplica(pasos, "det(A) = 0: Cramer no se puede aplicar "
+                                 "(no hay solución única).")
+    sol = []
+    for i in range(m):
+        Ai = [fila[:i] + [b[r]] + fila[i + 1:] for r, fila in enumerate(A)]
+        di = _det_cof(Ai) if m <= 4 else det_gauss(Ai)[0]
+        xi = di / d
+        sol.append(xi)
+        pasos += ["", f"A{i + 1} (columna {i + 1} reemplazada por b):", matriz_texto(Ai),
+                  f"det(A{i + 1}) = {fmt_corto(di)}",
+                  f"x{i + 1} = det(A{i + 1}) / det(A) = {fmt_corto(di)} / {fmt_corto(d)}"
+                  f" = {fmt_corto(xi)}"]
+    return "unica", sol, pasos + _solucion(sol)
+
+
+def sistema_inversa(M):
+    m, k = validar_sistema(M)
+    pasos = _encabezado("SISTEMA POR MATRIZ INVERSA  x = A^-1 · b", copiar(M))
+    if m != k:
+        return _no_aplica(pasos, f"A es de {m}x{k} (no cuadrada) y no tiene inversa.")
+    A = [list(map(Fraction, fila[:-1])) for fila in M]
+    b = [Fraction(fila[-1]) for fila in M]
+    inv, p2 = inversa_gauss_jordan(A)
+    pasos += p2
+    if inv is None:
+        return _no_aplica(pasos, "Sin inversa no se puede calcular x = A^-1 · b.")
+    pasos += ["", "x = A^-1 · b:"]
+    x = []
+    for i in range(k):
+        xi = sum((inv[i][j] * b[j] for j in range(k)), Fraction(0))
+        x.append(xi)
+        pasos.append(f"  x{i + 1} = " + " + ".join(
+            f"({fmt_corto(inv[i][j])})({fmt_corto(b[j])})" for j in range(k))
+            + f" = {fmt_corto(xi)}")
+    return "unica", x, pasos + _solucion(x)
+
+
+METODOS_SIS = {"Sistema Cramer": cramer, "Sistema Gauss": sistema_gauss,
+               "Sistema Gauss-Jordan": sistema_gauss_jordan,
+               "Sistema Matriz inversa": sistema_inversa}
+METODOS_DET = {"Det. Cofactores": det_cofactores, "Det. Gauss": det_gauss,
+               "Det. Gauss-Jordan": det_gauss_jordan}
+METODOS = (["Sistema todos los métodos"] + list(METODOS_SIS)
+           + ["Det. todos los métodos"] + list(METODOS_DET)
+           + ["Inversa Gauss-Jordan", "Inversa Adjunta"])
+SEP = ["", "=" * 30, ""]
+
+
+def _resumen_sistema(tipo, sol):
+    if tipo == "unica":
+        return ", ".join(f"x{i + 1} = {fmt_corto(v)}" for i, v in enumerate(sol))
+    return {"infinitas": "infinitas soluciones", "ninguna": "sin solución"}.get(
+        tipo, "no aplica")
 
 
 def resolver(M, metodo):
     """Devuelve el texto completo del resultado para el método elegido."""
     m, n = len(M), len(M[0])
-    if metodo == "Cramer":
-        return "\n".join(cramer(M)[2])
+    if metodo in METODOS_SIS:
+        return "\n".join(METODOS_SIS[metodo](M)[2])
+    if metodo == "Sistema todos los métodos":
+        validar_sistema(M)
+        salida, resumen = [], []
+        for nombre, f in METODOS_SIS.items():
+            tipo, sol, pasos = f(M)
+            salida += pasos + SEP
+            resumen.append(f"{nombre[8:]}: {_resumen_sistema(tipo, sol)}")
+        return "\n".join(salida + ["RESUMEN"] + resumen)
+
+    # Determinante o inversa: con matriz aumentada se usa solo la parte A
+    nota = []
+    if n == m + 1:
+        M = [fila[:-1] for fila in M]
+        nota = ["(Matriz aumentada detectada: se usa la parte cuadrada A)", ""]
 
     if metodo.startswith("Inversa"):
         f = inversa_gauss_jordan if "Jordan" in metodo else inversa_adjunta
         inv, pasos = f(M)
         if inv is not None:
             pasos += ["", _verificar(M, inv)]
-        return "\n".join(pasos)
+        return "\n".join(nota + pasos)
 
-    # Si el usuario ingresó una matriz aumentada, se usa solo la parte A
-    nota = []
-    if n == m + 1 and metodo != "Todos":
-        M = [fila[:-1] for fila in M]
-        nota = ["(Matriz aumentada detectada: se usa la parte cuadrada A)", ""]
-
-    funcs = {"Cofactores": det_cofactores, "Gauss": det_gauss,
-             "Gauss-Jordan": det_gauss_jordan}
-    if metodo in funcs:
-        d, pasos = funcs[metodo](M)
+    if metodo in METODOS_DET:
+        d, pasos = METODOS_DET[metodo](M)
         return "\n".join(nota + pasos + ["", f"RESULTADO: det = {fmt(d)}"])
 
-    # Todos
-    salida = []
-    if n == m + 1:
-        salida += cramer(M)[2] + ["", "=" * 30, ""]
-        M = [fila[:-1] for fila in M]
+    # Det. todos los métodos
     validar_cuadrada(M)
-    resumen = []
-    for nombre, f in funcs.items():
-        if nombre == "Cofactores" and len(M) > 7:
-            salida += ["Cofactores omitido (n > 7, demasiado lento)", "", "=" * 30, ""]
+    salida, resumen = list(nota), []
+    for nombre, f in METODOS_DET.items():
+        if nombre == "Det. Cofactores" and len(M) > 7:
+            salida += ["Cofactores omitido (n > 7, demasiado lento)"] + SEP
             continue
         d, pasos = f(M)
-        resumen.append(f"{nombre}: {fmt(d)}")
-        salida += pasos + ["", "=" * 30, ""]
-    salida += ["RESUMEN"] + resumen
-    return "\n".join(salida)
+        resumen.append(f"{nombre[5:]}: {fmt(d)}")
+        salida += pasos + SEP
+    return "\n".join(salida + ["RESUMEN"] + resumen)
 
 
 # ------------------------------------------------------------- texto -> matriz

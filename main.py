@@ -43,8 +43,8 @@ def con_fondo(widget, color, radio=12):
     return widget
 
 
-def boton(texto, fondo, color_texto=BLANCO, **kw):
-    b = Button(text=texto, bold=True, font_size=sp(16), color=color_texto,
+def boton(texto, fondo, color_texto=BLANCO, font_size=None, **kw):
+    b = Button(text=texto, bold=True, font_size=font_size or sp(16), color=color_texto,
                background_normal="", background_down="",
                background_color=(0, 0, 0, 0), **kw)
     con_fondo(b, fondo)
@@ -103,8 +103,18 @@ class Calculadora(BoxLayout):
         marco.add_widget(self.scroll_matriz)
         self.add_widget(marco)
 
+        # --- expandir o reducir la matriz sin perder lo escrito
+        tam = BoxLayout(size_hint_y=None, height=dp(42), spacing=dp(6))
+        for texto, dm, dn in (("+ Fila", 1, 0), ("- Fila", -1, 0),
+                              ("+ Columna", 0, 1), ("- Columna", 0, -1)):
+            b = boton(texto, VERDE if dm + dn > 0 else CREMA,
+                      BLANCO if dm + dn > 0 else TEXTO, font_size=sp(14))
+            b.bind(on_release=lambda _, dm=dm, dn=dn: self.redimensionar(dm, dn))
+            tam.add_widget(b)
+        self.add_widget(tam)
+
         # --- método y acciones
-        self.metodo = Spinner(text="Todos", values=METODOS, option_cls=OpcionMetodo,
+        self.metodo = Spinner(text=METODOS[0], values=METODOS, option_cls=OpcionMetodo,
                               bold=True, color=BLANCO, background_normal="",
                               background_color=(0, 0, 0, 0),
                               size_hint_y=None, height=dp(46))
@@ -123,8 +133,8 @@ class Calculadora(BoxLayout):
         self.add_widget(acciones)
 
         self.add_widget(Label(
-            text="Valores: enteros, decimales o fracciones (ej. -2, 0.5, 1/3).\n"
-                 "Cramer: matriz aumentada [A | b] de m x (m+1). Inversa: m = n.",
+            text="Sistemas: la última columna son los términos independientes b.\n"
+                 "Determinante e inversa: matriz cuadrada. Valores: -2, 0.5, 1/3.",
             font_size=sp(12), size_hint_y=None, height=dp(36), color=VERDE))
 
         # --- resultados
@@ -138,7 +148,9 @@ class Calculadora(BoxLayout):
         caja.add_widget(self.scroll_res)
         self.add_widget(caja)
 
-        self.crear_matriz()
+        self.in_n.text = "4"
+        self.crear_matriz([["2", "1", "-1", "8"], ["-3", "-1", "2", "-11"],
+                           ["-2", "1", "2", "-3"]])
 
     def crear_matriz(self, valores=None):
         try:
@@ -156,17 +168,26 @@ class Calculadora(BoxLayout):
                 ti = entrada(hint_text=f"a{i + 1}{j + 1}", font_size=sp(16),
                              halign="center", size_hint=(None, None),
                              width=dp(64), height=dp(44), write_tab=False)
-                if valores:
+                if valores and i < len(valores) and j < len(valores[i]):
                     ti.text = valores[i][j]
                 self.grid.add_widget(ti)
                 fila.append(ti)
             self.celdas.append(fila)
         aviso = ""
-        if n == m + 1:
-            aviso = "Matriz aumentada: lista para Cramer."
-        elif m != n:
-            aviso = "Atención: el determinante requiere m = n."
-        self.mostrar(f"Matriz {m}x{n} creada. {aviso}")
+        if n >= 2:
+            aviso = f"Como sistema: {m} ecuación(es), {n - 1} incógnita(s)."
+        if m != n:
+            aviso += "\nDeterminante e inversa requieren m = n."
+        self.mostrar(f"Matriz {m}x{n}. {aviso}")
+
+    def redimensionar(self, dm, dn):
+        """Agrega o quita una fila/columna conservando los valores escritos."""
+        m, n = len(self.celdas) + dm, len(self.celdas[0]) + dn
+        if not (1 <= m <= MAX_DIM and 1 <= n <= MAX_DIM):
+            return self.mostrar(f"m y n deben estar entre 1 y {MAX_DIM}.")
+        valores = [[c.text for c in fila] for fila in self.celdas]
+        self.in_m.text, self.in_n.text = str(m), str(n)
+        self.crear_matriz(valores)
 
     def pegar_matriz(self):
         """Ventana para pegar la matriz como texto (por ejemplo, desde Google Lens)."""

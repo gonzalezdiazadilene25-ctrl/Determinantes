@@ -1,0 +1,703 @@
+<title>Determinantes e Inversa</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;700;800&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: una sola columna tipo teléfono, igual que la app Android. Paleta "hibisco" elegida por la usuaria (tema único). */
+:root {
+  --magenta: #B00C60;
+  --crema: #F6DF96;
+  --verde: #4F6E0C;        /* #658D10 oscurecido un poco para texto legible */
+  --verde-btn: #658D10;
+  --lima: #D7E525;
+  --celeste: #BFF5F5;
+  --turquesa: #00B7C7;
+  --turquesa-osc: #00828E;
+  --blanco: #FFFFFF;
+  --texto: #2E2A24;
+  --font-ui: "Nunito", "Segoe UI", Roboto, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "Roboto Mono", ui-monospace, Menlo, Consolas, monospace;
+  --radio: 14px;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+html, body { background: var(--celeste); color: var(--texto); }
+body {
+  font-family: var(--font-ui);
+  font-size: 16px;
+  padding-block: 12px 24px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.app { max-width: 520px; margin: 0 auto; display: flex; flex-direction: column; gap: 10px; }
+h1 {
+  margin: 0; background: var(--magenta); color: var(--blanco);
+  border-radius: var(--radio); padding: 12px 14px; text-align: center;
+  font-size: 1.3rem; font-weight: 800; text-wrap: balance;
+}
+.aviso { margin: 0; font-size: .82rem; text-align: center; color: var(--verde); font-weight: 700; }
+.dims { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.dims label { font-weight: 800; font-size: .95rem; display: flex; align-items: center; gap: 6px; }
+.dims input {
+  width: 3.2em; font: inherit; font-size: 1.1rem; text-align: center; padding: 8px 4px;
+  border: 0; border-radius: 10px; background: var(--blanco); color: var(--texto);
+}
+button {
+  font: inherit; font-weight: 800; border: 0; border-radius: var(--radio);
+  padding: 12px 10px; cursor: pointer; color: var(--blanco);
+  transition: filter .12s, transform .06s;
+}
+button:hover { filter: brightness(1.07); }
+button:active { transform: translateY(1px); }
+:focus-visible { outline: 3px solid var(--magenta); outline-offset: 2px; }
+.b-turquesa { background: var(--turquesa); }
+.b-magenta { background: var(--magenta); }
+.b-verde { background: var(--verde-btn); }
+.b-crema { background: var(--crema); color: var(--texto); }
+.dims button { margin-left: auto; padding: 10px 18px; }
+.marco { background: var(--lima); border-radius: var(--radio); padding: 10px; overflow-x: auto; }
+.grid { display: grid; gap: 6px; width: max-content; }
+.grid input {
+  width: 64px; height: 44px; font: inherit; font-size: 1rem; text-align: center;
+  border: 0; border-radius: 8px; background: var(--blanco); color: var(--texto);
+  font-variant-numeric: tabular-nums;
+}
+.grid input::placeholder { color: #9A9486; font-size: .8rem; }
+select {
+  font: inherit; font-weight: 800; color: var(--blanco); background: var(--turquesa);
+  border: 0; border-radius: var(--radio); padding: 12px 14px; width: 100%;
+  appearance: none; text-align: center;
+}
+select option { background: var(--blanco); color: var(--texto); }
+.tam { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.tam button { padding: 9px 4px; font-size: .85rem; }
+.acciones { display: grid; grid-template-columns: 1.2fr 1.1fr .8fr; gap: 6px; }
+.ayuda { margin: 0; font-size: .8rem; color: var(--verde); text-align: center; line-height: 1.4; }
+.resultado {
+  background: var(--crema); border-radius: var(--radio); padding: 12px;
+  min-height: 260px; overflow-x: auto;
+}
+.resultado pre {
+  margin: 0; font-family: var(--font-mono); font-size: .8rem; line-height: 1.45;
+  white-space: pre; font-variant-numeric: tabular-nums; color: var(--texto);
+}
+.resultado pre.error { color: var(--magenta); font-weight: 500; white-space: pre-wrap; }
+.velo {
+  position: fixed; inset: 0; background: rgba(46, 42, 36, .55);
+  display: flex; align-items: center; justify-content: center; z-index: 20;
+  padding: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px))
+           max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+}
+.dialogo {
+  background: var(--turquesa); border-radius: 18px; padding: 12px; width: 100%; max-width: 460px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.dialogo h2 { margin: 2px 4px 0; color: var(--blanco); font-size: 1.05rem; }
+.dialogo .cuerpo {
+  background: var(--celeste); border-radius: var(--radio); padding: 12px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.dialogo p { margin: 0; font-size: .85rem; line-height: 1.45; }
+.dialogo textarea {
+  width: 100%; min-height: 170px; font-family: var(--font-mono); font-size: 1rem;
+  border: 0; border-radius: 10px; padding: 10px; background: var(--blanco); color: var(--texto); resize: vertical;
+}
+.dialogo .botones { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.dialogo .err { color: var(--magenta); font-weight: 700; font-size: .85rem; }
+@media (prefers-reduced-motion: reduce) { button { transition: none; } }
+</style>
+
+<main class="app">
+  <h1>Determinantes e Inversa</h1>
+  <p class="aviso">Versión de prueba web · determinantes, inversa y sistemas de ecuaciones</p>
+
+  <div class="dims">
+    <label for="m">Filas m: <input id="m" type="number" min="1" max="10" value="3" inputmode="numeric"></label>
+    <label for="n">Columnas n: <input id="n" type="number" min="1" max="10" value="3" inputmode="numeric"></label>
+    <button id="crear" class="b-turquesa" type="button">Crear</button>
+  </div>
+
+  <div class="marco"><div id="grid" class="grid"></div></div>
+
+  <div class="tam">
+    <button id="mas-fila" class="b-verde" type="button">+ Fila</button>
+    <button id="menos-fila" class="b-crema" type="button">- Fila</button>
+    <button id="mas-col" class="b-verde" type="button">+ Columna</button>
+    <button id="menos-col" class="b-crema" type="button">- Columna</button>
+  </div>
+
+  <label for="metodo" hidden>Método</label>
+  <select id="metodo"></select>
+
+  <div class="acciones">
+    <button id="calcular" class="b-magenta" type="button">Calcular</button>
+    <button id="pegar" class="b-verde" type="button">Pegar matriz</button>
+    <button id="limpiar" class="b-crema" type="button">Limpiar</button>
+  </div>
+
+  <p class="ayuda">Sistemas: la última columna son los términos independientes b.<br>
+    Determinante e inversa: matriz cuadrada. Valores: -2, 0.5, 1/3.</p>
+
+  <section class="resultado" aria-live="polite"><pre id="salida"></pre></section>
+</main>
+
+<div id="velo" class="velo" hidden>
+  <div class="dialogo" role="dialog" aria-modal="true" aria-labelledby="tit-pegar">
+    <h2 id="tit-pegar">Pegar matriz</h2>
+    <div class="cuerpo">
+      <p>Pega o escribe la matriz: una fila por línea, valores separados por espacios.<br>
+        Tip: con Google Lens toma foto a la matriz, toca "Texto" &gt; "Copiar" y pégala aquí.</p>
+      <label for="texto" hidden>Matriz como texto</label>
+      <textarea id="texto" placeholder="2 1 -1&#10;-3 -1 2&#10;-2 1 2"></textarea>
+      <p id="err-pegar" class="err" hidden></p>
+      <div class="botones">
+        <button id="usar" class="b-magenta" type="button">Usar matriz</button>
+        <button id="cancelar" class="b-crema" type="button">Cancelar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// <logica> — traducción directa de determinantes.py (fracciones exactas con BigInt)
+class ErrorUsuario extends Error {}
+
+function gcd(a, b) { a = a < 0n ? -a : a; b = b < 0n ? -b : b; while (b) [a, b] = [b, a % b]; return a; }
+class Fr {
+  constructor(n, d = 1n) {
+    n = BigInt(n); d = BigInt(d);
+    if (d === 0n) throw new RangeError("división entre cero");
+    if (d < 0n) { n = -n; d = -d; }
+    const g = gcd(n, d) || 1n;
+    this.n = n / g; this.d = d / g;
+  }
+  add(o) { o = F(o); return new Fr(this.n * o.d + o.n * this.d, this.d * o.d); }
+  sub(o) { o = F(o); return new Fr(this.n * o.d - o.n * this.d, this.d * o.d); }
+  mul(o) { o = F(o); return new Fr(this.n * o.n, this.d * o.d); }
+  div(o) { o = F(o); return new Fr(this.n * o.d, this.d * o.n); }
+  esCero() { return this.n === 0n; }
+  igual(o) { o = F(o); return this.n === o.n && this.d === o.d; }
+}
+function F(x) { return x instanceof Fr ? x : new Fr(BigInt(x)); }
+
+function parseValor(texto) {
+  const t = texto.trim().replace(/,/g, ".");
+  if (t === "") throw new ErrorUsuario("Hay casillas vacías");
+  let r = t.match(/^([+-]?)(\d+)\s*\/\s*(\d+)$/);
+  if (r) {
+    if (BigInt(r[3]) === 0n) throw new ErrorUsuario(`Valor no válido: '${texto}'`);
+    return new Fr((r[1] === "-" ? -1n : 1n) * BigInt(r[2]), BigInt(r[3]));
+  }
+  r = t.match(/^([+-]?)(\d*)(?:\.(\d*))?(?:[eE]([+-]?\d+))?$/);
+  if (r && (r[2] || r[3])) {
+    const frac = r[3] || "";
+    let num = BigInt((r[2] || "0") + frac), den = 10n ** BigInt(frac.length);
+    const e = parseInt(r[4] || "0", 10);
+    if (e >= 0) num *= 10n ** BigInt(e); else den *= 10n ** BigInt(-e);
+    return new Fr(r[1] === "-" ? -num : num, den);
+  }
+  throw new ErrorUsuario(`Valor no válido: '${texto}'`);
+}
+
+function g6(x) {  // equivalente a format(x, ".6g") de Python
+  if (x === 0) return "0";
+  const [mant, exp] = x.toExponential(5).split("e");
+  const e = parseInt(exp, 10);
+  const limpiar = s => s.includes(".") ? s.replace(/0+$/, "").replace(/\.$/, "") : s;
+  if (e < -4 || e >= 6) return limpiar(mant) + "e" + (e < 0 ? "-" : "+") + String(Math.abs(e)).padStart(2, "0");
+  return limpiar(x.toFixed(5 - e));
+}
+function fmt(x) { x = F(x); return x.d === 1n ? String(x.n) : `${x.n}/${x.d} (aprox. ${g6(Number(x.n) / Number(x.d))})`; }
+function fmtCorto(x) { x = F(x); return x.d === 1n ? String(x.n) : `${x.n}/${x.d}`; }
+function matrizTexto(M, barra = null) {
+  const c = M.map(f => f.map(fmtCorto));
+  const ancho = Math.max(...c.flat().map(s => s.length));
+  const linea = f => {
+    const p = f.map(s => s.padStart(ancho));
+    return barra === null ? p.join("  ") : p.slice(0, barra).join("  ") + "  |  " + p.slice(barra).join("  ");
+  };
+  return c.map(f => "[ " + linea(f) + " ]").join("\n");
+}
+const copiar = M => M.map(f => f.map(F));
+function validarCuadrada(M) {
+  const m = M.length, n = m ? M[0].length : 0;
+  if (m === 0 || m !== n) throw new ErrorUsuario(`La matriz es ${m}x${n}. El determinante solo existe para matrices cuadradas (m = n).`);
+}
+const menor = (M, fila, col) => M.filter((_, i) => i !== fila).map(r => r.filter((_, j) => j !== col));
+const signo = k => (k % 2 === 0 ? 1 : -1);
+
+function detCof(M) {
+  const n = M.length;
+  if (n === 1) return M[0][0];
+  if (n === 2) return M[0][0].mul(M[1][1]).sub(M[0][1].mul(M[1][0]));
+  let total = new Fr(0n);
+  for (let j = 0; j < n; j++)
+    if (!M[0][j].esCero()) total = total.add(M[0][j].mul(detCof(menor(M, 0, j))).mul(signo(j)));
+  return total;
+}
+
+function detCofactores(M) {
+  validarCuadrada(M); M = copiar(M);
+  const n = M.length;
+  const pasos = ["MÉTODO DE COFACTORES (expansión por la fila 1)", matrizTexto(M), ""];
+  if (n === 1) { pasos.push(`det = ${fmt(M[0][0])}`); return [M[0][0], pasos]; }
+  if (n === 2) {
+    const d = detCof(M);
+    pasos.push(`det = (${fmtCorto(M[0][0])})(${fmtCorto(M[1][1])}) - (${fmtCorto(M[0][1])})(${fmtCorto(M[1][0])}) = ${fmt(d)}`);
+    return [d, pasos];
+  }
+  let total = new Fr(0n);
+  const cofs = [];
+  for (let j = 0; j < n; j++) {
+    const s = signo(j), sub = menor(M, 0, j), dm = detCof(sub), cof = dm.mul(s);
+    cofs.push(cof);
+    total = total.add(M[0][j].mul(cof));
+    pasos.push(`a1${j + 1} = ${fmtCorto(M[0][j])},  C1${j + 1} = (${s > 0 ? "+" : "-"}1)·M1${j + 1} = ${fmtCorto(cof)}`);
+    pasos.push(`  Menor M1${j + 1}:\n` + matrizTexto(sub) + `\n  det(M1${j + 1}) = ${fmtCorto(dm)}`);
+    pasos.push("");
+  }
+  pasos.push("det = " + M[0].map((v, j) => `(${fmtCorto(v)})(${fmtCorto(cofs[j])})`).join(" + "));
+  pasos.push(`det = ${fmt(total)}`);
+  return [total, pasos];
+}
+
+function detGauss(M) {
+  validarCuadrada(M);
+  const A = copiar(M), n = A.length;
+  let sg = 1;
+  const pasos = ["MÉTODO DE ELIMINACIÓN GAUSSIANA", matrizTexto(A), ""];
+  for (let k = 0; k < n; k++) {
+    let piv = -1;
+    for (let i = k; i < n; i++) if (!A[i][k].esCero()) { piv = i; break; }
+    if (piv < 0) { pasos.push(`Columna ${k + 1} sin pivote no nulo -> det = 0`); return [new Fr(0n), pasos]; }
+    if (piv !== k) { [A[k], A[piv]] = [A[piv], A[k]]; sg = -sg; pasos.push(`F${k + 1} <-> F${piv + 1}  (el signo cambia)`); }
+    for (let i = k + 1; i < n; i++) {
+      if (!A[i][k].esCero()) {
+        const f = A[i][k].div(A[k][k]);
+        A[i] = A[i].map((a, j) => a.sub(f.mul(A[k][j])));
+        pasos.push(`F${i + 1} -> F${i + 1} - (${fmtCorto(f)})·F${k + 1}`);
+      }
+    }
+    pasos.push(matrizTexto(A)); pasos.push("");
+  }
+  let d = new Fr(BigInt(sg));
+  for (let k = 0; k < n; k++) d = d.mul(A[k][k]);
+  pasos.push("Matriz triangular superior. det = signo × producto de la diagonal");
+  pasos.push(`det = (${sg > 0 ? "+" : "-"}1) · ${A.map((f, k) => `(${fmtCorto(f[k])})`).join(" · ")} = ${fmt(d)}`);
+  return [d, pasos];
+}
+
+function detGaussJordan(M) {
+  validarCuadrada(M);
+  const A = copiar(M), n = A.length;
+  let factor = new Fr(1n);
+  const pasos = ["MÉTODO DE GAUSS-JORDAN", matrizTexto(A), ""];
+  for (let k = 0; k < n; k++) {
+    let piv = -1;
+    for (let i = k; i < n; i++) if (!A[i][k].esCero()) { piv = i; break; }
+    if (piv < 0) { pasos.push(`Columna ${k + 1} sin pivote no nulo -> det = 0`); return [new Fr(0n), pasos]; }
+    if (piv !== k) { [A[k], A[piv]] = [A[piv], A[k]]; factor = factor.mul(-1); pasos.push(`F${k + 1} <-> F${piv + 1}  (factor × -1)`); }
+    const p = A[k][k];
+    if (!p.igual(1)) {
+      A[k] = A[k].map(v => v.div(p)); factor = factor.mul(p);
+      pasos.push(`F${k + 1} -> F${k + 1} / (${fmtCorto(p)})  (factor × ${fmtCorto(p)})`);
+    }
+    for (let i = 0; i < n; i++) {
+      if (i !== k && !A[i][k].esCero()) {
+        const f = A[i][k];
+        A[i] = A[i].map((a, j) => a.sub(f.mul(A[k][j])));
+        pasos.push(`F${i + 1} -> F${i + 1} - (${fmtCorto(f)})·F${k + 1}`);
+      }
+    }
+    pasos.push(matrizTexto(A)); pasos.push("");
+  }
+  pasos.push("Se obtuvo la matriz identidad (det = 1).");
+  pasos.push(`det = producto de pivotes × signo de intercambios = ${fmt(factor)}`);
+  return [factor, pasos];
+}
+
+function inversaGaussJordan(M) {
+  validarCuadrada(M);
+  const n = M.length;
+  const A = M.map((f, i) => [...f.map(F), ...Array.from({ length: n }, (_, j) => new Fr(i === j ? 1n : 0n))]);
+  const pasos = ["MATRIZ INVERSA POR GAUSS-JORDAN  [A | I] -> [I | A^-1]", matrizTexto(A), ""];
+  for (let k = 0; k < n; k++) {
+    let piv = -1;
+    for (let i = k; i < n; i++) if (!A[i][k].esCero()) { piv = i; break; }
+    if (piv < 0) {
+      pasos.push(`Columna ${k + 1} sin pivote no nulo -> det(A) = 0`, "La matriz NO tiene inversa (es singular).");
+      return [null, pasos];
+    }
+    if (piv !== k) { [A[k], A[piv]] = [A[piv], A[k]]; pasos.push(`F${k + 1} <-> F${piv + 1}`); }
+    const p = A[k][k];
+    if (!p.igual(1)) { A[k] = A[k].map(v => v.div(p)); pasos.push(`F${k + 1} -> F${k + 1} / (${fmtCorto(p)})`); }
+    for (let i = 0; i < n; i++) {
+      if (i !== k && !A[i][k].esCero()) {
+        const f = A[i][k];
+        A[i] = A[i].map((a, j) => a.sub(f.mul(A[k][j])));
+        pasos.push(`F${i + 1} -> F${i + 1} - (${fmtCorto(f)})·F${k + 1}`);
+      }
+    }
+    pasos.push(matrizTexto(A), "");
+  }
+  const inv = A.map(f => f.slice(n));
+  pasos.push("A^-1 =", matrizTexto(inv));
+  return [inv, pasos];
+}
+
+function inversaAdjunta(M) {
+  validarCuadrada(M);
+  const A = copiar(M), n = A.length;
+  const pasos = ["MATRIZ INVERSA POR ADJUNTA  A^-1 = adj(A) / det(A)", matrizTexto(A), ""];
+  const d = n <= 6 ? detCof(A) : detGauss(A)[0];
+  pasos.push(`det(A) = ${fmt(d)}`);
+  if (d.esCero()) { pasos.push("det(A) = 0 -> la matriz NO tiene inversa (es singular)."); return [null, pasos]; }
+  if (n === 1) { const inv = [[new Fr(1n).div(d)]]; pasos.push("", "A^-1 =", matrizTexto(inv)); return [inv, pasos]; }
+  const cof = A.map((_, i) => A.map((_, j) => (n <= 7 ? detCof(menor(A, i, j)) : detGauss(menor(A, i, j))[0]).mul(signo(i + j))));
+  const adj = cof.map((_, i) => cof.map((_, j) => cof[j][i]));
+  const inv = adj.map(f => f.map(v => v.div(d)));
+  pasos.push("", "Matriz de cofactores  Cij = (-1)^(i+j)·det(Mij):", matrizTexto(cof),
+    "", "Adjunta (transpuesta de cofactores):", matrizTexto(adj),
+    "", `A^-1 = adj(A) / (${fmtCorto(d)}) =`, matrizTexto(inv));
+  return [inv, pasos];
+}
+
+function verificar(M, inv) {
+  const n = M.length;
+  for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
+    let s = new Fr(0n);
+    for (let k = 0; k < n; k++) s = s.add(F(M[i][k]).mul(inv[k][j]));
+    if (!s.igual(i === j ? 1 : 0)) return "Verificación fallida";
+  }
+  return "Verificación: A · A^-1 = I  (correcto)";
+}
+
+// ---------------------------------------------------------- sistemas A·x = b
+function validarSistema(M) {
+  const m = M.length, n = m ? M[0].length : 0;
+  if (n < 2) throw new ErrorUsuario("Para un sistema ingresa la matriz aumentada [A | b]: los coeficientes y, en la última columna, los términos independientes (n >= 2).");
+  return [m, n - 1];
+}
+const plural = (k, s, p) => `${k} ${k === 1 ? s : p}`;
+function termino(coef, nombre, primero) {
+  const neg = coef.n < 0n, v = new Fr(neg ? -coef.n : coef.n, coef.d);
+  const t = (v.igual(1) ? "" : fmtCorto(v)) + nombre;
+  return primero ? (neg ? "-" : "") + t : ` ${neg ? "-" : "+"} ${t}`;
+}
+function ecuacionesTexto(M) {
+  const k = M[0].length - 1;
+  return M.map(f => {
+    let izq = "";
+    for (let j = 0; j < k; j++) if (!f[j].esCero()) izq += termino(f[j], `x${j + 1}`, izq === "");
+    return `  ${izq || "0"} = ${fmtCorto(f[k])}`;
+  }).join("\n");
+}
+function encabezado(titulo, M) {
+  const m = M.length, k = M[0].length - 1;
+  return [titulo, `Sistema de ${plural(m, "ecuación", "ecuaciones")} con ${plural(k, "incógnita", "incógnitas")}:`,
+    ecuacionesTexto(M), "", "Matriz aumentada [A | b]:", matrizTexto(M, k), ""];
+}
+function eliminar(A, k, reducida, pasos) {
+  const m = A.length, pivotes = [];
+  let fila = 0;
+  for (let col = 0; col < k; col++) {
+    if (fila >= m) break;
+    let piv = -1;
+    for (let i = fila; i < m; i++) if (!A[i][col].esCero()) { piv = i; break; }
+    if (piv < 0) continue;
+    const antes = pasos.length;
+    if (piv !== fila) { [A[fila], A[piv]] = [A[piv], A[fila]]; pasos.push(`F${fila + 1} <-> F${piv + 1}`); }
+    if (reducida && !A[fila][col].igual(1)) {
+      const p = A[fila][col];
+      A[fila] = A[fila].map(v => v.div(p));
+      pasos.push(`F${fila + 1} -> F${fila + 1} / (${fmtCorto(p)})`);
+    }
+    for (let i = reducida ? 0 : fila + 1; i < m; i++) {
+      if (i !== fila && !A[i][col].esCero()) {
+        const f = A[i][col].div(A[fila][col]);
+        A[i] = A[i].map((a, j) => a.sub(f.mul(A[fila][j])));
+        pasos.push(`F${i + 1} -> F${i + 1} - (${fmtCorto(f)})·F${fila + 1}`);
+      }
+    }
+    if (pasos.length > antes) pasos.push(matrizTexto(A, k), "");
+    pivotes.push(col);
+    fila++;
+  }
+  return pivotes;
+}
+function clasificar(A, k, pivotes, pasos) {
+  const r = pivotes.length;
+  for (let i = r; i < A.length; i++) {
+    if (!A[i][k].esCero()) {
+      pasos.push(`La fila ${i + 1} dice 0 = ${fmtCorto(A[i][k])}, lo cual es imposible.`,
+        "", "RESULTADO: el sistema NO tiene solución (incompatible).");
+      return "ninguna";
+    }
+  }
+  pasos.push(`Rango de A = rango de [A | b] = ${r};  incógnitas = ${k}.`);
+  return r === k ? "unica" : "infinitas";
+}
+function parametrica(R, k, pivotes) {
+  const libres = [];
+  for (let j = 0; j < k; j++) if (!pivotes.includes(j)) libres.push(j);
+  const nombres = {}, expr = {};
+  libres.forEach((j, i) => { nombres[j] = `t${i + 1}`; expr[j] = nombres[j]; });
+  pivotes.forEach((c, r) => {
+    let txt = R[r][k].esCero() ? "" : fmtCorto(R[r][k]);
+    for (const j of libres) if (!R[r][j].esCero()) txt += termino(R[r][j].mul(-1), nombres[j], txt === "");
+    expr[c] = txt || "0";
+  });
+  const lineas = ["Variables libres: " + libres.map(j => `x${j + 1} = ${nombres[j]}`).join(", ") + "  (cualquier número real)"];
+  for (let j = 0; j < k; j++) lineas.push(`  x${j + 1} = ${expr[j]}`);
+  return lineas;
+}
+const solucion = x => ["", "SOLUCIÓN:", ...x.map((v, i) => `  x${i + 1} = ${fmt(v)}`)];
+
+function sistemaGauss(M) {
+  const [, k] = validarSistema(M);
+  const A = copiar(M);
+  const pasos = encabezado("SISTEMA POR ELIMINACIÓN GAUSSIANA", A);
+  const piv = eliminar(A, k, false, pasos);
+  pasos.push("Matriz escalonada obtenida.");
+  const tipo = clasificar(A, k, piv, pasos);
+  if (tipo === "ninguna") return [tipo, null, pasos];
+  if (tipo === "infinitas") {
+    const R = A.map(f => f.slice());
+    eliminar(R, k, true, []);
+    const sol = parametrica(R, k, piv);
+    pasos.push("", "RESULTADO: el sistema tiene INFINITAS soluciones.", ...sol);
+    return [tipo, sol, pasos];
+  }
+  pasos.push("", "Sustitución hacia atrás:");
+  const x = Array.from({ length: k }, () => new Fr(0n));
+  for (let i = k - 1; i >= 0; i--) {
+    let suma = new Fr(0n);
+    for (let j = i + 1; j < k; j++) suma = suma.add(A[i][j].mul(x[j]));
+    x[i] = A[i][k].sub(suma).div(A[i][i]);
+    pasos.push(i === k - 1
+      ? `  x${i + 1} = ${fmtCorto(A[i][k])} / (${fmtCorto(A[i][i])}) = ${fmtCorto(x[i])}`
+      : `  x${i + 1} = (${fmtCorto(A[i][k])} - (${fmtCorto(suma)})) / (${fmtCorto(A[i][i])}) = ${fmtCorto(x[i])}`);
+  }
+  return ["unica", x, [...pasos, ...solucion(x)]];
+}
+function sistemaGaussJordan(M) {
+  const [, k] = validarSistema(M);
+  const A = copiar(M);
+  const pasos = encabezado("SISTEMA POR GAUSS-JORDAN", A);
+  const piv = eliminar(A, k, true, pasos);
+  pasos.push("Matriz escalonada reducida obtenida.");
+  const tipo = clasificar(A, k, piv, pasos);
+  if (tipo === "ninguna") return [tipo, null, pasos];
+  if (tipo === "infinitas") {
+    const sol = parametrica(A, k, piv);
+    pasos.push("", "RESULTADO: el sistema tiene INFINITAS soluciones.", ...sol);
+    return [tipo, sol, pasos];
+  }
+  const x = A.slice(0, k).map(f => f[k]);
+  pasos.push("La solución se lee en la última columna.");
+  return ["unica", x, [...pasos, ...solucion(x)]];
+}
+function noAplica(pasos, motivo) {
+  pasos.push(motivo, "Usa Gauss o Gauss-Jordan: indican si hay una solución, infinitas o ninguna.");
+  return ["no_aplica", null, pasos];
+}
+function cramer(M) {
+  const [m, k] = validarSistema(M);
+  const pasos = encabezado("SISTEMA POR REGLA DE CRAMER", copiar(M));
+  if (m !== k) return noAplica(pasos, `Cramer necesita tantas ecuaciones como incógnitas (aquí hay ${m} y ${k}).`);
+  const A = M.map(f => f.slice(0, -1).map(F)), b = M.map(f => F(f[f.length - 1]));
+  const det = X => (m <= 4 ? detCof(X) : detGauss(X)[0]);
+  const d = det(A);
+  pasos.push(`det(A) = ${fmt(d)}`);
+  if (d.esCero()) return noAplica(pasos, "det(A) = 0: Cramer no se puede aplicar (no hay solución única).");
+  const sol = [];
+  for (let i = 0; i < m; i++) {
+    const Ai = A.map((f, r) => f.map((v, j) => (j === i ? b[r] : v)));
+    const di = det(Ai), xi = di.div(d);
+    sol.push(xi);
+    pasos.push("", `A${i + 1} (columna ${i + 1} reemplazada por b):`, matrizTexto(Ai),
+      `det(A${i + 1}) = ${fmtCorto(di)}`,
+      `x${i + 1} = det(A${i + 1}) / det(A) = ${fmtCorto(di)} / ${fmtCorto(d)} = ${fmtCorto(xi)}`);
+  }
+  return ["unica", sol, [...pasos, ...solucion(sol)]];
+}
+function sistemaInversa(M) {
+  const [m, k] = validarSistema(M);
+  const pasos = encabezado("SISTEMA POR MATRIZ INVERSA  x = A^-1 · b", copiar(M));
+  if (m !== k) return noAplica(pasos, `A es de ${m}x${k} (no cuadrada) y no tiene inversa.`);
+  const A = M.map(f => f.slice(0, -1).map(F)), b = M.map(f => F(f[f.length - 1]));
+  const [inv, p2] = inversaGaussJordan(A);
+  pasos.push(...p2);
+  if (inv === null) return noAplica(pasos, "Sin inversa no se puede calcular x = A^-1 · b.");
+  pasos.push("", "x = A^-1 · b:");
+  const x = [];
+  for (let i = 0; i < k; i++) {
+    let xi = new Fr(0n);
+    for (let j = 0; j < k; j++) xi = xi.add(inv[i][j].mul(b[j]));
+    x.push(xi);
+    pasos.push(`  x${i + 1} = ` + inv[i].map((v, j) => `(${fmtCorto(v)})(${fmtCorto(b[j])})`).join(" + ") + ` = ${fmtCorto(xi)}`);
+  }
+  return ["unica", x, [...pasos, ...solucion(x)]];
+}
+
+const METODOS_SIS = { "Sistema Cramer": cramer, "Sistema Gauss": sistemaGauss, "Sistema Gauss-Jordan": sistemaGaussJordan, "Sistema Matriz inversa": sistemaInversa };
+const METODOS_DET = { "Det. Cofactores": detCofactores, "Det. Gauss": detGauss, "Det. Gauss-Jordan": detGaussJordan };
+const METODOS = ["Sistema todos los métodos", ...Object.keys(METODOS_SIS), "Det. todos los métodos", ...Object.keys(METODOS_DET), "Inversa Gauss-Jordan", "Inversa Adjunta"];
+const SEP = ["", "=".repeat(30), ""];
+
+function resumenSistema(tipo, sol) {
+  if (tipo === "unica") return sol.map((v, i) => `x${i + 1} = ${fmtCorto(v)}`).join(", ");
+  return { infinitas: "infinitas soluciones", ninguna: "sin solución" }[tipo] || "no aplica";
+}
+
+function resolver(M, metodo) {
+  const m = M.length, n = M[0].length;
+  if (METODOS_SIS[metodo]) return METODOS_SIS[metodo](M)[2].join("\n");
+  if (metodo === "Sistema todos los métodos") {
+    validarSistema(M);
+    const salida = [], resumen = [];
+    for (const [nombre, f] of Object.entries(METODOS_SIS)) {
+      const [tipo, sol, pasos] = f(M);
+      salida.push(...pasos, ...SEP);
+      resumen.push(`${nombre.slice(8)}: ${resumenSistema(tipo, sol)}`);
+    }
+    return [...salida, "RESUMEN", ...resumen].join("\n");
+  }
+  let nota = [];
+  if (n === m + 1) {
+    M = M.map(f => f.slice(0, -1));
+    nota = ["(Matriz aumentada detectada: se usa la parte cuadrada A)", ""];
+  }
+  if (metodo.startsWith("Inversa")) {
+    const [inv, pasos] = (metodo.includes("Jordan") ? inversaGaussJordan : inversaAdjunta)(M);
+    if (inv !== null) pasos.push("", verificar(M, inv));
+    return [...nota, ...pasos].join("\n");
+  }
+  if (METODOS_DET[metodo]) {
+    const [d, pasos] = METODOS_DET[metodo](M);
+    return [...nota, ...pasos, "", `RESULTADO: det = ${fmt(d)}`].join("\n");
+  }
+  validarCuadrada(M);
+  const salida = [...nota], resumen = [];
+  for (const [nombre, f] of Object.entries(METODOS_DET)) {
+    if (nombre === "Det. Cofactores" && M.length > 7) { salida.push("Cofactores omitido (n > 7, demasiado lento)", ...SEP); continue; }
+    const [d, pasos] = f(M);
+    resumen.push(`${nombre.slice(5)}: ${fmt(d)}`);
+    salida.push(...pasos, ...SEP);
+  }
+  return [...salida, "RESUMEN", ...resumen].join("\n");
+}
+
+function matrizDesdeTexto(texto) {
+  const filas = [];
+  for (let linea of texto.trim().split(/\r\n|\r|\n/)) {
+    linea = linea.trim().replace(/^[\[\]()|]+|[\[\]()|]+$/g, "").trim();
+    if (!linea) continue;
+    let partes = linea.split(/[\s;|]+/).filter(Boolean);
+    if (partes.length === 1 && partes[0].includes(",")) partes = partes[0].split(",").filter(Boolean);
+    filas.push(partes.map(p => parseValor(p.replace(/−/g, "-"))));
+  }
+  if (!filas.length) throw new ErrorUsuario("No se encontraron números.");
+  const n = filas[0].length;
+  filas.forEach((f, i) => {
+    if (f.length !== n) throw new ErrorUsuario(`La fila ${i + 1} tiene ${f.length} valores; la fila 1 tiene ${n}.`);
+  });
+  return filas;
+}
+// </logica>
+
+// ---------------------------------------------------------------- interfaz
+const MAX_DIM = 10;
+const $ = id => document.getElementById(id);
+const salida = $("salida");
+let celdas = [];
+
+METODOS.forEach(m => $("metodo").add(new Option(m, m)));
+
+function mostrar(texto, esError = false) {
+  salida.textContent = texto;
+  salida.classList.toggle("error", esError);
+}
+
+function crearMatriz(valores) {
+  const m = parseInt($("m").value, 10), n = parseInt($("n").value, 10);
+  if (!(m >= 1 && m <= MAX_DIM && n >= 1 && n <= MAX_DIM)) return mostrar(`m y n deben estar entre 1 y ${MAX_DIM}.`, true);
+  const grid = $("grid");
+  grid.replaceChildren();
+  grid.style.gridTemplateColumns = `repeat(${n}, 64px)`;
+  celdas = [];
+  for (let i = 0; i < m; i++) {
+    const fila = [];
+    for (let j = 0; j < n; j++) {
+      const inp = document.createElement("input");
+      inp.id = `a${i + 1}_${j + 1}`;
+      inp.placeholder = `a${i + 1}${j + 1}`;
+      inp.setAttribute("aria-label", `Fila ${i + 1}, columna ${j + 1}`);
+      inp.autocomplete = "off";
+      if (valores && valores[i] && valores[i][j] !== undefined) inp.value = valores[i][j];
+      grid.append(inp);
+      fila.push(inp);
+    }
+    celdas.push(fila);
+  }
+  let aviso = n >= 2 ? `Como sistema: ${plural(m, "ecuación", "ecuaciones")}, ${plural(n - 1, "incógnita", "incógnitas")}.` : "";
+  if (m !== n) aviso += "\nDeterminante e inversa requieren m = n.";
+  mostrar(`Matriz ${m}x${n}. ${aviso}`);
+}
+
+function redimensionar(dm, dn) {
+  const m = celdas.length + dm, n = celdas[0].length + dn;
+  if (!(m >= 1 && m <= MAX_DIM && n >= 1 && n <= MAX_DIM)) return mostrar(`m y n deben estar entre 1 y ${MAX_DIM}.`, true);
+  const valores = celdas.map(f => f.map(c => c.value));
+  $("m").value = m; $("n").value = n;
+  crearMatriz(valores);
+}
+
+function calcular() {
+  try {
+    const M = celdas.map(f => f.map(c => parseValor(c.value)));
+    mostrar(resolver(M, $("metodo").value));
+  } catch (e) {
+    if (e instanceof ErrorUsuario) mostrar(`Error: ${e.message}`, true);
+    else { mostrar("Error inesperado al calcular.", true); console.error(e); }
+  }
+}
+
+function abrirPegar() {
+  $("err-pegar").hidden = true;
+  $("velo").hidden = false;
+  $("texto").focus();
+}
+function cerrarPegar() { $("velo").hidden = true; $("pegar").focus(); }
+function usarTexto() {
+  try {
+    const M = matrizDesdeTexto($("texto").value);
+    if (M.length > MAX_DIM || M[0].length > MAX_DIM) throw new ErrorUsuario(`Máximo ${MAX_DIM}x${MAX_DIM}.`);
+    $("m").value = M.length; $("n").value = M[0].length;
+    crearMatriz(M.map(f => f.map(fmtCorto)));
+    cerrarPegar();
+  } catch (e) {
+    $("err-pegar").textContent = e instanceof ErrorUsuario ? e.message : "No se pudo leer la matriz.";
+    $("err-pegar").hidden = false;
+  }
+}
+
+$("crear").addEventListener("click", () => crearMatriz());
+$("calcular").addEventListener("click", calcular);
+$("mas-fila").addEventListener("click", () => redimensionar(1, 0));
+$("menos-fila").addEventListener("click", () => redimensionar(-1, 0));
+$("mas-col").addEventListener("click", () => redimensionar(0, 1));
+$("menos-col").addEventListener("click", () => redimensionar(0, -1));
+$("limpiar").addEventListener("click", () => { celdas.flat().forEach(c => (c.value = "")); mostrar(""); });
+$("pegar").addEventListener("click", abrirPegar);
+$("cancelar").addEventListener("click", cerrarPegar);
+$("usar").addEventListener("click", usarTexto);
+$("velo").addEventListener("click", e => { if (e.target === $("velo")) cerrarPegar(); });
+document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("velo").hidden) cerrarPegar(); });
+
+// Ejemplo inicial: sistema de 3 ecuaciones resuelto con todos los métodos
+$("m").value = 3; $("n").value = 4;
+crearMatriz([["2", "1", "-1", "8"], ["-3", "-1", "2", "-11"], ["-2", "1", "2", "-3"]]);
+$("metodo").value = METODOS[0];
+calcular();
+</script>

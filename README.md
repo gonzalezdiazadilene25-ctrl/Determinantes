@@ -1,8 +1,9 @@
-# Determinantes e Inversa (Android, Python + Kivy)
+# Determinantes, Inversa y Sistemas (Android, Python + Kivy)
 
-Calcula el determinante de una matriz por **cofactores**, **eliminación gaussiana**
-y **Gauss-Jordan**, y resuelve sistemas con la **regla de Cramer**.
-Muestra el procedimiento paso a paso y usa fracciones exactas.
+Resuelve **sistemas de ecuaciones** por **Cramer**, **Gauss**, **Gauss-Jordan** y
+**matriz inversa** (indica si hay solución única, infinitas o ninguna), calcula el
+**determinante** (cofactores, Gauss, Gauss-Jordan) y la **matriz inversa**
+(Gauss-Jordan y adjunta). Muestra el procedimiento paso a paso con fracciones exactas.
 
 - `main.py`: interfaz (Kivy)
 - `determinantes.py`: lógica matemática (sin dependencias)
@@ -18,8 +19,13 @@ luego en la app pulsa **Pegar matriz** y pégala (una fila por línea, valores s
 La app crea la matriz con el tamaño correcto automáticamente.
 
 * El determinante solo existe si m = n.
-* La **inversa** solo existe si m = n y det(A) ≠ 0.
-* Para **Cramer**, ingresa la matriz aumentada [A | b] de m x (m+1).
+* **Sistemas:** ingresa la matriz aumentada [A | b]: los coeficientes y, en la última
+  columna, los términos independientes. Gauss y Gauss-Jordan funcionan con cualquier
+  número de ecuaciones e incógnitas; Cramer y matriz inversa necesitan tantas
+  ecuaciones como incógnitas y det(A) ≠ 0.
+* Los botones **+ Fila / - Fila / + Columna / - Columna** agrandan o achican la matriz
+  sin borrar lo escrito.
+* El **determinante** y la **inversa** requieren una matriz cuadrada (m = n).
 
 ## Instalar en el celular
 
