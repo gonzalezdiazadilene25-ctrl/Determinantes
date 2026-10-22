@@ -11,6 +11,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
       - name: Dependencias
         run: |
           sudo apt-get update
@@ -25,7 +29,7 @@ jobs:
         run: |
           # Publica las partes utiles del log como anotaciones (visibles en la pagina del run)
           sed 's/\x1b\[[0-9;]*m//g' build.log > limpio.log
-          awk '/STDOUT \(last|STDERR:|Command failed/{f=1} /ENVIRONMENT:/{f=0} f' limpio.log | tail -80 > contexto.txt
+          awk '/What went wrong|Try:|BUILD FAILED|Could not|requires Java/{f=1;n=0} f&&n++<25' limpio.log | head -60 > contexto.txt
           grep -E "error:|Error:|ERROR|Traceback|No such file|not found|fatal" limpio.log \
             | grep -v -E "noexcept|error code|performance hint|warning" | tail -40 > errores.txt || true
           publicar() {
