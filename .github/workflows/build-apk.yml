@@ -3,6 +3,9 @@ on:
   push:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-22.04
@@ -23,10 +26,13 @@ jobs:
       - name: Compilar APK
         run: |
           set -o pipefail
-          yes | buildozer -v android debug 2>&1 | tee build.log
+          # buildozer 1.5.0 marca error al no adivinar el nombre del APK aunque
+          # Gradle lo haya creado; el paso siguiente decide si hubo APK o no.
+          yes | buildozer -v android debug 2>&1 | tee build.log || true
       - name: Mostrar error de compilacion
-        if: failure()
+        if: always()
         run: |
+          ls .buildozer/android/platform/*/dists/*/build/outputs/apk/debug/*.apk 2>/dev/null && exit 0
           # Publica las partes utiles del log como anotaciones (visibles en la pagina del run)
           sed 's/\x1b\[[0-9;]*m//g' build.log > limpio.log
           awk '/What went wrong|Try:|BUILD FAILED|Could not|requires Java/{f=1;n=0} f&&n++<25' limpio.log | head -60 > contexto.txt
@@ -41,16 +47,32 @@ jobs:
           }
           publicar Errores errores.txt
           publicar Contexto contexto.txt
-      - name: Buscar el APK generado
-        if: always()
+      - name: Buscar y verificar el APK
         run: |
           mkdir -p salida
-          find bin .buildozer -name "*.apk" -newer buildozer.spec -exec cp {} salida/ \; 2>/dev/null || true
-          ls -la salida
-          if ls salida/*.apk >/dev/null 2>&1; then echo "::notice title=APK::$(ls salida)"; fi
+          APK=$(find bin .buildozer -name "*.apk" -newer buildozer.spec 2>/dev/null | head -1)
+          if [ -z "$APK" ]; then echo "::error title=APK::No se genero ningun APK"; exit 1; fi
+          cp "$APK" salida/determinantes.apk
+          unzip -l salida/determinantes.apk > contenido.txt
+          for f in classes.dex AndroidManifest.xml lib/arm64-v8a/libmain.so lib/armeabi-v7a/libmain.so assets/private.tar; do
+            grep -q " $f$" contenido.txt || { echo "::error title=APK incompleto::falta $f"; exit 1; }
+          done
+          unzip -p salida/determinantes.apk assets/private.tar > private.tar
+          (tar tzf private.tar 2>/dev/null || tar tf private.tar) > app.txt
+          for f in main.py determinantes.py; do
+            grep -qE "(^|/)$f(c)?$" app.txt || { echo "::error title=APK incompleto::falta $f"; exit 1; }
+          done
+          TAM=$(du -h salida/determinantes.apk | cut -f1)
+          echo "::notice title=APK verificado::determinantes.apk ($TAM) contiene la app, Python y las librerias para arm64-v8a y armeabi-v7a"
       - uses: actions/upload-artifact@v4
-        if: always()
         with:
           name: determinantes-apk
-          path: salida/*.apk
-          if-no-files-found: warn
+          path: salida/determinantes.apk
+      - name: Publicar en Releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "apk-${{ github.run_number }}" salida/determinantes.apk \
+            --title "Determinantes - APK (compilacion ${{ github.run_number }})" \
+            --notes "Descarga determinantes.apk e instalalo en tu celular Android (permite instalar apps de origen desconocido)." \
+            --latest
